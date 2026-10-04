@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mesai">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1F3864">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Mesai Takvimi</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#6b7380;--bd:#e3e6eb;--ok:#1f9d55;--okbg:#d8f3e3;--off:#d97706;--offbg:#fdebc8;--ac:#2563eb;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101215;--card:#1a1d22;--tx:#eceef1;--mut:#9aa3af;--bd:#2b3038;--ok:#4ade80;--okbg:#14391f;--off:#fbbf24;--offbg:#44310a;--ac:#6b9bff}}
+:root[data-theme="dark"]{--bg:#101215;--card:#1a1d22;--tx:#eceef1;--mut:#9aa3af;--bd:#2b3038;--ok:#4ade80;--okbg:#14391f;--off:#fbbf24;--offbg:#44310a;--ac:#6b9bff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;max-width:480px;margin:0 auto;padding:12px}
+.hd{display:flex;align-items:center;justify-content:space-between;margin:8px 0 12px}
+.hd h1{font-size:20px;margin:0}
+.nav{width:44px;height:44px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dow{text-align:center;font-size:12px;color:var(--mut);padding:4px 0}
+.d{aspect-ratio:1;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:16px;position:relative;padding:0}
+.d.ok{background:var(--okbg);border-color:var(--ok);color:var(--ok);font-weight:600}
+.d.off{background:var(--offbg);border-color:var(--off);color:var(--off);font-weight:600}
+.d.today{outline:2px solid var(--ac)}
+.d small{position:absolute;bottom:2px;left:0;right:0;font-size:9px}
+.stats{display:flex;gap:8px;margin:14px 0}
+.stat{flex:1;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:22px}.stat span{font-size:12px;color:var(--mut)}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.btn{flex:1;min-width:120px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:15px}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--bd);border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));max-width:480px;margin:0 auto;display:none;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
+.sheet.on{display:block}
+.sheet h2{margin:0 0 12px;font-size:17px}
+.row{display:flex;gap:8px;margin-bottom:8px}
+.row .btn{min-width:0}
+.btn.ok{background:var(--okbg);color:var(--ok);border-color:var(--ok);font-weight:600}
+.btn.off{background:var(--offbg);color:var(--off);border-color:var(--off);font-weight:600}
+textarea{width:100%;height:90px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);padding:8px;font-size:13px}
+.msg{font-size:13px;color:var(--mut);margin-top:10px;min-height:18px}
+</style>
+</head>
+<body>
+<div class="hd">
+  <button class="nav" id="prev" aria-label="Önceki ay">‹</button>
+  <h1 id="title"></h1>
+  <button class="nav" id="next" aria-label="Sonraki ay">›</button>
+</div>
+<div class="grid" id="dows"></div>
+<div class="grid" id="days" style="margin-top:6px"></div>
+<div class="stats">
+  <div class="stat"><b id="sOk">0</b><span>Yapıldı</span></div>
+  <div class="stat"><b id="sOff">0</b><span>İzinli</span></div>
+  <div class="stat"><b id="sAll">0</b><span>Toplam (yıl: yapıldı)</span></div>
+</div>
+<div class="tools">
+  <button class="btn" id="exp">Dosyaya kaydet</button>
+  <button class="btn" id="csv">CSV indir</button>
+  <button class="btn" id="imp">Dosyadan yükle</button>
+  <button class="btn" id="bk">Yedek metni</button>
+</div>
+<input type="file" id="file" accept=".json,application/json,text/plain" hidden>
+<div class="msg" id="msg"></div>
+
+<div class="sheet" id="sheet">
+  <h2 id="sh"></h2>
+  <div class="row"><button class="btn ok" id="bOk">✓ Yapıldı</button><button class="btn off" id="bOff">İzinli</button></div>
+  <div class="row"><button class="btn" id="bClr">Temizle</button><button class="btn" id="bX">Kapat</button></div>
+</div>
+
+<div class="sheet" id="bsheet">
+  <h2>Yedek metni</h2>
+  <textarea id="ta" placeholder="Yedek metnini buraya yapıştırın"></textarea>
+  <div class="row" style="margin-top:8px"><button class="btn" id="bCopy">Kopyala</button><button class="btn" id="bLoad">Yükle</button><button class="btn" id="bClose">Kapat</button></div>
+</div>
+
+<script>
+var KEY="mesai-takvimi-v1",data={},view=new Date(),sel=null;
+var AY=["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+var GN=["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"];
+function $(i){return document.getElementById(i)}
+function load(){try{data=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){data={}}}
+function idb(fn){try{var r=indexedDB.open("mesai",1);r.onupgradeneeded=function(){r.result.createObjectStore("k")};r.onsuccess=function(){try{fn(r.result.transaction("k","readwrite").objectStore("k"))}catch(e){}}}catch(e){}}
+function save(){idb(function(st){st.put(JSON.stringify(data),KEY)});try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){say("Tarayıcı kaydı kullanılamıyor; dosyaya kaydedin.")}}
+function say(t){$("msg").textContent=t}
+function pad(n){return n<10?"0"+n:""+n}
+function ks(y,m,d){return y+"-"+pad(m+1)+"-"+pad(d)}
+GN.forEach(function(g){var e=document.createElement("div");e.className="dow";e.textContent=g;$("dows").appendChild(e)});
+function render(){
+  var y=view.getFullYear(),m=view.getMonth();
+  $("title").textContent=AY[m]+" "+y;
+  var first=(new Date(y,m,1).getDay()+6)%7,n=new Date(y,m+1,0).getDate(),g=$("days");
+  g.innerHTML="";
+  for(var i=0;i<first;i++)g.appendChild(document.createElement("div"));
+  var t=new Date(),ok=0,off=0;
+  for(var d=1;d<=n;d++){
+    var k=ks(y,m,d),s=data[k],b=document.createElement("button");
+    b.className="d"+(s?" "+s:"")+(t.getFullYear()==y&&t.getMonth()==m&&t.getDate()==d?" today":"");
+    b.textContent=d;
+    if(s){var sm=document.createElement("small");sm.textContent=s=="ok"?"✓":"izin";b.appendChild(sm);if(s=="ok")ok++;else off++}
+    b.onclick=(function(k,d){return function(){open(k,d)}})(k,d);
+    g.appendChild(b);
+  }
+  $("sOk").textContent=ok;$("sOff").textContent=off;
+  var yr=0;for(var key in data){if(key.indexOf(y+"-")==0&&data[key]=="ok")yr++}
+  $("sAll").textContent=yr;
+}
+function open(k,d){sel=k;$("sh").textContent=d+" "+AY[view.getMonth()]+" "+view.getFullYear();$("sheet").classList.add("on")}
+function set(v){if(!sel)return;if(v)data[sel]=v;else delete data[sel];save();$("sheet").classList.remove("on");render()}
+$("bOk").onclick=function(){set("ok")};
+$("bOff").onclick=function(){set("off")};
+$("bClr").onclick=function(){set(null)};
+$("bX").onclick=function(){$("sheet").classList.remove("on")};
+$("prev").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};
+$("next").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
+
+async function dl(name,text){
+  var type=name.slice(-4)==".csv"?"text/csv":"application/json";
+  try{
+    if(navigator.canShare&&window.File){
+      var f=new File([text],name,{type:type});
+      if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});say("Paylaşım menüsünden 'Dosyalara Kaydet'i seçin.");return}
+    }
+  }catch(e){if(e&&e.name=="AbortError"){say("İptal edildi.");return}}
+  try{
+    var u=URL.createObjectURL(new Blob([text],{type:type})),l=document.createElement("a");
+    l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();
+    setTimeout(function(){URL.revokeObjectURL(u)},4000);say("Dosya indiriliyor: "+name);
+  }catch(e){say("Kaydedilemedi. 'Yedek metni' ile kopyalayabilirsiniz.")}
+}
+$("exp").onclick=function(){dl("mesai-takvimi-yedek.json",JSON.stringify(data,null,1))};
+$("csv").onclick=function(){
+  var ks2=Object.keys(data).sort(),r=["Tarih,Durum"];
+  ks2.forEach(function(k){r.push(k+","+(data[k]=="ok"?"Yapıldı":"İzinli"))});
+  dl("mesai-takvimi.csv","\ufeff"+r.join("\n"));
+};
+function merge(txt){
+  try{var o=JSON.parse(txt),c=0;
+    for(var k in o){if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&(o[k]=="ok"||o[k]=="off")){data[k]=o[k];c++}}
+    save();render();say(c+" gün yüklendi.");return true
+  }catch(e){say("Dosya okunamadı.");return false}
+}
+$("imp").onclick=function(){$("file").click()};
+$("file").onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){merge(r.result)};r.readAsText(f);e.target.value=""};
+$("bk").onclick=function(){$("ta").value=JSON.stringify(data);$("bsheet").classList.add("on")};
+$("bClose").onclick=function(){$("bsheet").classList.remove("on")};
+$("bLoad").onclick=function(){if(merge($("ta").value))$("bsheet").classList.remove("on")};
+$("bCopy").onclick=function(){
+  $("ta").select();
+  try{navigator.clipboard.writeText($("ta").value).then(function(){say("Kopyalandı.")},function(){document.execCommand("copy");say("Kopyalandı.")})}
+  catch(e){try{document.execCommand("copy");say("Kopyalandı.")}catch(x){say("Metni elle kopyalayın.")}}
+};
+if("serviceWorker"in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+load();render();
+idb(function(st){var g=st.get(KEY);g.onsuccess=function(){try{var o=JSON.parse(g.result||"{}");var c=0;for(var k in o){if(!data[k]){data[k]=o[k];c++}}if(c){save();render()}}catch(e){}}});
+window.addEventListener("pageshow",function(){load();render()});
+document.addEventListener("visibilitychange",function(){if(!document.hidden){load();render()}});
+</script>
+</body>
+</html>
